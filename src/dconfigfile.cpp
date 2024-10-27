@@ -52,6 +52,13 @@ inline static bool isValidFilename(const QString& filename)
     QRegularExpressionMatch match = regex.match(filename);
     return match.hasMatch();
 }
+// AppId don't contain ' ', but it can be empty.
+inline static bool isValidAppId(const QString& appId)
+{
+    static const QRegularExpression regex("^[\\w\\-\\.]*$");
+    QRegularExpressionMatch match = regex.match(appId);
+    return match.hasMatch();
+}
 /*!
 @~english
   \internal
@@ -689,6 +696,10 @@ public:
 
     bool load(const QString &localPrefix) override
     {
+        if (!isValidAppId(configKey.appId)) {
+            qCWarning(cfLog, "AppId is invalid, appId=%s", qPrintable(configKey.appId));
+            return false;
+        }
         if (!isValidFilename(configKey.fileName)) {
             qCWarning(cfLog, "Name is invalid, filename=%s", qPrintable(configKey.fileName));
             return false;
