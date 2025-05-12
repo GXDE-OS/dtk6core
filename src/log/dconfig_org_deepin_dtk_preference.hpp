@@ -172,7 +172,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<bool> bindableAutoDisplayFeature() {
         return QBindable<bool>(this, "autoDisplayFeature");
     }
@@ -204,7 +204,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<bool> bindableFeatureUpdated() {
         return QBindable<bool>(this, "featureUpdated");
     }
@@ -236,7 +236,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<bool> bindableKeyboardsearchDisabled() {
         return QBindable<bool>(this, "keyboardsearchDisabled");
     }
@@ -268,7 +268,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<QString> bindableRules() {
         return QBindable<QString>(this, "rules");
     }
@@ -300,7 +300,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<qlonglong> bindableThemeType() {
         return QBindable<qlonglong>(this, "themeType");
     }
@@ -332,7 +332,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<qlonglong> bindableTitlebarHeight() {
         return QBindable<qlonglong>(this, "titlebarHeight");
     }
@@ -364,7 +364,7 @@ public:
             });
         }
     }
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
     QBindable<bool> bindableUnderlineShortcut() {
         return QBindable<bool>(this, "underlineShortcut");
     }
