@@ -93,7 +93,14 @@ public:
     struct OSBuild {
         OSBuild():A(0), B(0), C(0), D(0), xyz(100){
         }
-        uint A, B, C, D, E, xyz; // ABCDE.xyz
+
+        /* ABCDE.xyz模式
+        系统构建号 	A                       B           C           D           E         x        yz
+        值含义	操作系统产品的大版本代号	产品线类型	功能小版本	产品线版本	处理器架构	固定值	补丁小版本
+        值位数     1                         1           1           1           1         1        2
+        值范围   -------------------------	0～9、A~Z	---------------------------       1	   00~99，AA~ZZ
+        */
+        uint A, B, C, D, E, xyz;
     };
 
     MinVersion minVersion;
@@ -139,9 +146,12 @@ bool DSysInfoPrivate::splitA_BC_DMode()
         minVersion.D = minv % 10;
     } else if (minorVersion.length() > 0) {
         const QString D = minorVersion.right(1);
-        if (D.contains(QRegularExpression("[0-9A-Z]"))) {
-            // 0-9...A-Z
-            minVersion.D = 10 + static_cast<uint>(D.data()->toLatin1() - 'A');
+        const QChar ch = D.at(0);
+        if (ch.isDigit()) {
+            minVersion.D = static_cast<uint>(ch.unicode() - '0');
+        } else if (ch >= 'A' && ch <= 'Z') {
+            // 0-9...A-Z -> 10..35
+            minVersion.D = 10 + static_cast<uint>(ch.unicode() - 'A');
         } else {
             qWarning() << "invalid minorVersion";
             minVersion.D = 0;
@@ -266,19 +276,24 @@ bool DSysInfoPrivate::ensureOsVersion()
     D_ASSET_EXIT(left.size() == 5, "OsBuild version(ls) invalid!");
 
     int idx = 0;
-    osBuild.A = left.value(idx++, "0").toUInt(&ok);
+    auto parseDigitOrAZ = [&](const QString &s, bool *outOk) -> uint {
+        if (s.isEmpty()) { if (outOk) *outOk = false; return 0u; }
+        const QChar ch = s.at(0);
+        if (ch.isDigit()) { if (outOk) *outOk = true; return static_cast<uint>(ch.unicode() - '0'); }
+        if (ch >= 'A' && ch <= 'Z') { if (outOk) *outOk = true; return static_cast<uint>(ch.toLatin1()); }
+        if (outOk) *outOk = false;
+        return 0u;
+    };
+
+    osBuild.A = parseDigitOrAZ(left.value(idx++, "0"), &ok);
     D_ASSET_EXIT(ok, "OsBuild version(A) invalid!");
-    osBuild.B = left.value(idx++, "0").toUInt(&ok);
+    osBuild.B = parseDigitOrAZ(left.value(idx++, "0"), &ok);
     D_ASSET_EXIT(ok, "OsBuild version(B) invalid!");
-    osBuild.C = left.value(idx++, "0").toUInt(&ok);
-    if (!ok) {
-        auto c = left.value(idx-1, "0").toLatin1();
-        D_ASSET_EXIT(c.size()>0, "OsBuild version(C) invalid!");
-        osBuild.C = uint(c.at(0));
-    }
-    osBuild.D = left.value(idx++, "0").toUInt(&ok);
+    osBuild.C = parseDigitOrAZ(left.value(idx++, "0"), &ok);
+    D_ASSET_EXIT(ok, "OsBuild version(C) invalid!");
+    osBuild.D = parseDigitOrAZ(left.value(idx++, "0"), &ok);
     D_ASSET_EXIT(ok, "OsBuild version(D) invalid!");
-    osBuild.E = left.value(idx++, "0").toUInt(&ok);
+    osBuild.E = parseDigitOrAZ(left.value(idx++, "0"), &ok);
     D_ASSET_EXIT(ok, "OsBuild version(E) invalid!");
 
     // xyz
@@ -522,19 +537,21 @@ void DSysInfoPrivate::ensureComputerInfo()
 
 QMap<QString, QString> DSysInfoPrivate::parseInfoFile(QFile &file)
 {
-    char buf[1024];
-    qint64 lineLength = 0;
     QMap<QString, QString> map;
-    do {
-        lineLength = file.readLine(buf, sizeof(buf));
-        QString s(buf);
-        if (s.contains(':')) {
-            QStringList list = s.split(':');
-            if (list.size() == 2) {
-                map.insert(list.first().trimmed(), list.back().trimmed());
-            }
-        }
-    } while (lineLength >= 0);
+
+    qint64 fileSize = file.size();
+    // 因为此类文件一般不会超过1M大小，超过1M大小大概率出现异常情况
+    // 避免文件内容异常导致出现问题，对文件大小做了限制
+    if (fileSize < 1024000) {
+        QByteArray buff = file.readAll();
+        map = parseInfoContent(QString::fromLocal8Bit(buff));
+    } else {
+        qCWarning(logSysInfo) << "Size is too big, is it broken? File :"
+                              << file.fileName()
+                              << ", size :"
+                              << fileSize;
+    }
+
     return map;
 }
 
@@ -543,11 +560,11 @@ QMap<QString, QString> DSysInfoPrivate::parseInfoContent(const QString &content)
     QMap<QString, QString> map;
     QStringList lineContents = content.split("\n");
     for (auto lineContent : lineContents) {
-        if (lineContent.contains(':')) {
-            QStringList list = lineContent.split(':');
-            if (list.size() == 2) {
-                map.insert(list.first().trimmed(), list.back().trimmed());
-            }
+        const int index = lineContent.indexOf(':');
+        if (index != -1) {
+            const QString key = lineContent.left(index);
+            const QString value = lineContent.mid(index + 1);
+            map.insert(key.trimmed(), value.trimmed());
         }
     }
     return map;
@@ -682,10 +699,13 @@ DSysInfo::UosEdition DSysInfo::uosEditionType()
         case 3:
             return UosEuler;
         case 4:
-        case 9:
             return UosMilitaryS;
         case 5:
             return UosDeviceEdition;
+        case 9:
+            return UosEducation; // 服务器 教育版(UT-3-PP-PR-001_操作系统标识与产品版本号规范_20250905)
+        case 'A':
+            return UosDefense; // 服务器 国防版
         default:
             break;
         }

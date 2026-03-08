@@ -20,6 +20,12 @@ if(LINUX)
     find_package(PkgConfig REQUIRED)
     if("${QT_VERSION_MAJOR}" STREQUAL "5")
         pkg_check_modules(QGSettings REQUIRED IMPORTED_TARGET gsettings-qt)
+    elseif(${QT_VERSION_MAJOR} EQUAL 6)
+        if(${Qt6Core_VERSION} VERSION_GREATER_EQUAL 6.10.0)
+            find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS CorePrivate)
+        endif()
+    else()
+        message(FATAL_ERROR "Unsupported Qt version: ${QT_VERSION_MAJOR}")
     endif()
 endif()
 
@@ -27,6 +33,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Xml)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Concurrent)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Test)
 find_package(GTest REQUIRED)
+
+include(GoogleTest)
 
 # for test.so
 set(TEST_SO_NAME vtabletest${DTK_VERSION_MAJOR})
@@ -110,4 +118,4 @@ target_include_directories( ${BIN_NAME} PUBLIC
     ./testso/
 )
 
-add_test(NAME ${BIN_NAME} COMMAND ${BIN_NAME})
+gtest_discover_tests(${BIN_NAME})

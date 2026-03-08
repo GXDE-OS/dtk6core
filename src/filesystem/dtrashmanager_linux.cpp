@@ -123,7 +123,7 @@ static bool renameFile(const QFileInfo &fileInfo, const QString &target, QString
             }
         }
 
-        if (!QDir().rmdir(fileInfo.filePath())) {
+        if (!QDir().rename(fileInfo.filePath(), target)) {
             if (errorString) {
                 *errorString = QString("Cannot remove the %1 dir").arg(fileInfo.filePath());
             }
@@ -183,11 +183,13 @@ bool DTrashManager::moveToTrash(const QString &filePath, bool followSymlink)
     }
 
     QDir trashDir(TRASH_FILES_PATH);
-    QStorageInfo storageInfo(fileInfo.filePath());
-    QStorageInfo trashStorageInfo(trashDir);
+    if (followSymlink && fileInfo.isSymLink()) {
+        QStorageInfo storageInfo(fileInfo.filePath());
+        QStorageInfo trashStorageInfo(trashDir);
 
-    if (storageInfo != trashStorageInfo) {
-        return false;
+        if (storageInfo != trashStorageInfo) {
+            return false;
+        }
     }
 
     if (!trashDir.mkpath(TRASH_INFO_PATH)) {
